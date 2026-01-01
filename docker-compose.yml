@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  # 后端 API 服务
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-sk-0dka2cfc906949e0dad98e956906f856f19fc9f0b86A6L8B}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.gptsapi.net/v1}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/opensource_copilot
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./backend:/app
+    restart: unless-stopped
+
+  # 前端服务
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # PostgreSQL 数据库
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=opensource_copilot
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+  # Redis 缓存
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  # MaxKB 知识库服务 (可选)
+  # maxkb:
+  #   image: 1panel/maxkb:latest
+  #   ports:
+  #     - "8080:8080"
+  #   volumes:
+  #     - maxkb_data:/app/data
+  #   restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  # maxkb_data:
+
