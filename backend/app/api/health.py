@@ -136,3 +136,35 @@ async def check_database() -> ServiceStatus:
         latency_ms=0
     )
 
+
+@router.get("/cache")
+async def cache_stats():
+    """
+    获取缓存统计信息
+    """
+    from app.services.cache import get_cache
+    
+    cache = get_cache()
+    stats = await cache.stats()
+    
+    return {
+        "status": "ok",
+        "cache": stats
+    }
+
+
+@router.post("/cache/clear")
+async def clear_cache():
+    """
+    清空缓存
+    """
+    from app.services.cache import get_cache
+    
+    cache = get_cache()
+    await cache.clear()
+    
+    return {
+        "status": "ok",
+        "message": "Cache cleared successfully"
+    }
+
