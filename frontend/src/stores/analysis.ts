@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import { analysisApi } from '@/api/analysis'
+import { ref, computed, watch } from 'vue'
+import { analysisApi, type CompareResponse } from '@/api/analysis'
 
 export interface HealthScore {
   overall: number
@@ -26,15 +26,47 @@ export interface RepoAnalysis {
     severity: string
   }
   recommendations?: any[]
+  analyzedAt?: string
 }
+
+// 本地存储 key
+const HISTORY_STORAGE_KEY = 'opensource_copilot_history'
 
 export const useAnalysisStore = defineStore('analysis', () => {
   const currentAnalysis = ref<RepoAnalysis | null>(null)
   const recentAnalyses = ref<RepoAnalysis[]>([])
+  const compareResult = ref<CompareResponse | null>(null)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
   
   const hasAnalysis = computed(() => currentAnalysis.value !== null)
+  
+  // 从本地存储加载历史记录
+  function loadHistory() {
+    try {
+      const saved = localStorage.getItem(HISTORY_STORAGE_KEY)
+      if (saved) {
+        recentAnalyses.value = JSON.parse(saved)
+      }
+    } catch (e) {
+      console.error('Failed to load history:', e)
+    }
+  }
+  
+  // 保存历史记录到本地存储
+  function saveHistory() {
+    try {
+      localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(recentAnalyses.value))
+    } catch (e) {
+      console.error('Failed to save history:', e)
+    }
+  }
+  
+  // 监听变化自动保存
+  watch(recentAnalyses, saveHistory, { deep: true })
+  
+  // 初始化时加载历史
+  loadHistory()
   
   async function analyzeRepo(repo: string) {
     isLoading.value = true
@@ -44,21 +76,22 @@ export const useAnalysisStore = defineStore('analysis', () => {
       const result = await analysisApi.analyzeRepo(repo)
       
       const analysis: RepoAnalysis = {
-        repo,
-        repoInfo: result.repo_info,
-        metrics: result.metrics || {},
+        repo: result?.repo || repo,
+        repoInfo: result?.repo_info || {},
+        metrics: result?.metrics || {},
         healthScore: {
-          overall: result.health_score?.overall || 0,
-          activity: result.health_score?.activity || 0,
-          community: result.health_score?.community || 0,
-          maintenance: result.health_score?.maintenance || 0,
-          growth: result.health_score?.growth || 0,
-          summary: result.health_score?.summary,
-          highlights: result.health_score?.highlights,
-          concerns: result.health_score?.concerns
+          overall: result?.health_score?.overall || 0,
+          activity: result?.health_score?.activity || 0,
+          community: result?.health_score?.community || 0,
+          maintenance: result?.health_score?.maintenance || 0,
+          growth: result?.health_score?.growth || 0,
+          summary: result?.health_score?.summary,
+          highlights: result?.health_score?.highlights,
+          concerns: result?.health_score?.concerns
         },
-        trends: result.trends,
-        charts: result.charts
+        trends: result?.trends,
+        charts: result?.charts,
+        analyzedAt: result?.analyzed_at || new Date().toISOString()
       }
       
       currentAnalysis.value = analysis
@@ -84,8 +117,35 @@ export const useAnalysisStore = defineStore('analysis', () => {
     }
   }
   
+  async function compareRepos(repos: string[]) {
+    isLoading.value = true
+    error.value = null
+    
+    try {
+      compareResult.value = await analysisApi.compareRepos(repos)
+      return compareResult.value
+    } catch (e: any) {
+      error.value = e.message || '对比分析失败'
+      throw e
+    } finally {
+      isLoading.value = false
+    }
+  }
+  
   function clearCurrentAnalysis() {
     currentAnalysis.value = null
+  }
+  
+  function clearHistory() {
+    recentAnalyses.value = []
+    saveHistory()
+  }
+  
+  function removeFromHistory(repo: string) {
+    const index = recentAnalyses.value.findIndex(a => a.repo === repo)
+    if (index >= 0) {
+      recentAnalyses.value.splice(index, 1)
+    }
   }
   
   function getScoreClass(score: number): string {
@@ -104,16 +164,28 @@ export const useAnalysisStore = defineStore('analysis', () => {
     return '需关注'
   }
   
+  function getScoreColor(score: number): string {
+    if (score >= 80) return '#10b981' // emerald
+    if (score >= 60) return '#22c55e' // green
+    if (score >= 40) return '#eab308' // yellow
+    return '#ef4444' // red
+  }
+  
   return {
     currentAnalysis,
     recentAnalyses,
+    compareResult,
     isLoading,
     error,
     hasAnalysis,
     analyzeRepo,
+    compareRepos,
     clearCurrentAnalysis,
+    clearHistory,
+    removeFromHistory,
     getScoreClass,
-    getScoreLabel
+    getScoreLabel,
+    getScoreColor
   }
 })
 
