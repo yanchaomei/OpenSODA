@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     ]
     
     # OpenAI配置
-    OPENAI_API_KEY: str = "sk-0dka2cfc906949e0dad98e956906f856f19fc9f0b86A6L8B"
+    OPENAI_API_KEY: str = "sk-MLw835bd40b8f415027d051be1c3eecc689453d3037j8sAO"
     OPENAI_MODEL: str = "gpt-4o"
     OPENAI_BASE_URL: str = "https://api.gptsapi.net/v1"
     

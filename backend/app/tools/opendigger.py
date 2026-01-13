@@ -3,11 +3,13 @@ OpenDigger API 工具封装
 OpenDigger: https://github.com/X-lab2017/open-digger
 
 提供开源项目的各种指标数据获取能力
+支持缓存以提高性能
 """
 import httpx
 from typing import Dict, Any, Optional, List
 from langchain_core.tools import tool
 from app.core.config import settings
+from app.services.cache import get_cache, cached
 
 
 class OpenDiggerTool:
@@ -50,7 +52,7 @@ class OpenDiggerTool:
     
     async def get_metric(self, repo: str, metric: str) -> Optional[Dict[str, Any]]:
         """
-        获取单个指标数据
+        获取单个指标数据（支持缓存）
         
         Args:
             repo: 仓库路径，如 "apache/dubbo"
@@ -59,12 +61,24 @@ class OpenDiggerTool:
         Returns:
             指标数据字典，按月份索引
         """
+        # 尝试从缓存获取
+        cache = get_cache()
+        cache_key = f"opendigger:{repo}:{metric}"
+        
+        cached_data = await cache.get(cache_key)
+        if cached_data is not None:
+            return cached_data
+        
+        # 从 API 获取
         url = f"{self.BASE_URL}/{repo}/{metric}.json"
         
         try:
             response = await self.client.get(url)
             if response.status_code == 200:
-                return response.json()
+                data = response.json()
+                # 缓存 30 分钟
+                await cache.set(cache_key, data, ttl=1800)
+                return data
             else:
                 print(f"Failed to fetch {metric} for {repo}: {response.status_code}")
                 return None
