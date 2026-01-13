@@ -375,7 +375,7 @@ async def run_agent(
 async def run_agent_stream(
     message: str,
     repo: Optional[str] = None,
-    history: Optional[List[Dict[str, str]]] = None
+    history: Optional[List] = None
 ) -> AsyncGenerator[Dict[str, Any], None]:
     """
     流式运行 Agent，实时返回思考和行动过程
@@ -386,10 +386,14 @@ async def run_agent_stream(
     messages = []
     if history:
         for h in history:
-            if h.get("role") == "user":
-                messages.append(HumanMessage(content=h["content"]))
-            elif h.get("role") == "assistant":
-                messages.append(AIMessage(content=h["content"]))
+            # 支持 dict 和 Pydantic model 两种格式
+            role = h.get("role") if isinstance(h, dict) else getattr(h, "role", None)
+            content = h.get("content", "") if isinstance(h, dict) else getattr(h, "content", "")
+            
+            if role == "user":
+                messages.append(HumanMessage(content=content))
+            elif role == "assistant":
+                messages.append(AIMessage(content=content))
     
     if repo and repo not in message:
         message = f"[当前分析仓库: {repo}]\n\n{message}"
