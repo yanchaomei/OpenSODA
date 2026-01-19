@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import VoiceInput from './VoiceInput.vue'
 
 const props = defineProps<{
   disabled?: boolean
@@ -12,6 +13,7 @@ const emit = defineEmits<{
 
 const message = ref('')
 const isFocused = ref(false)
+const voiceError = ref('')
 
 const canSend = computed(() => message.value.trim().length > 0 && !props.disabled)
 
@@ -26,6 +28,25 @@ function handleKeydown(e: KeyboardEvent) {
     e.preventDefault()
     handleSend()
   }
+}
+
+// 语音输入结果
+function handleVoiceTranscript(text: string) {
+  message.value = text
+  voiceError.value = ''
+  // 自动发送
+  setTimeout(() => {
+    if (message.value === text) {
+      handleSend()
+    }
+  }, 500)
+}
+
+function handleVoiceError(error: string) {
+  voiceError.value = error
+  setTimeout(() => {
+    voiceError.value = ''
+  }, 3000)
 }
 
 // 快捷命令
@@ -87,6 +108,12 @@ function insertCommand(hint: string) {
           class="chat-textarea"
         />
         
+        <!-- 语音输入 -->
+        <VoiceInput
+          @transcript="handleVoiceTranscript"
+          @error="handleVoiceError"
+        />
+        
         <!-- 发送按钮 -->
         <button
           @click="handleSend"
@@ -105,6 +132,13 @@ function insertCommand(hint: string) {
           </svg>
         </button>
       </div>
+      
+      <!-- 语音错误提示 -->
+      <Transition name="slide">
+        <div v-if="voiceError" class="px-4 py-2 bg-red-500/10 text-red-400 text-sm border-t border-red-500/20">
+          {{ voiceError }}
+        </div>
+      </Transition>
     </div>
     
     <!-- 底部提示 -->
@@ -167,5 +201,16 @@ function insertCommand(hint: string) {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+.slide-enter-active,
+.slide-leave-active {
+  transition: all 0.2s ease;
+}
+
+.slide-enter-from,
+.slide-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
 }
 </style>

@@ -11,7 +11,10 @@ const menuItems = [
   { path: '/dashboard', icon: '📊', label: '数据仪表盘' },
   { path: '/analysis', icon: '🔍', label: '项目分析' },
   { path: '/compare', icon: '⚖️', label: '项目对比' },
+  { path: '/batch', icon: '📦', label: '批量分析' },
+  { path: '/monitor', icon: '🔔', label: '项目监控' },
   { path: '/history', icon: '📜', label: '分析历史' },
+  { path: '/about', icon: '💡', label: '关于项目' },
 ]
 
 const currentPath = computed(() => route.path)

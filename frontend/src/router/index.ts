@@ -37,6 +37,24 @@ const routes: RouteRecordRaw[] = [
     name: 'History',
     component: () => import('@/views/History.vue'),
     meta: { title: '分析历史' }
+  },
+  {
+    path: '/batch',
+    name: 'BatchAnalysis',
+    component: () => import('@/views/BatchAnalysis.vue'),
+    meta: { title: '批量分析' }
+  },
+  {
+    path: '/monitor',
+    name: 'Monitor',
+    component: () => import('@/views/Monitor.vue'),
+    meta: { title: '项目监控' }
+  },
+  {
+    path: '/about',
+    name: 'About',
+    component: () => import('@/views/About.vue'),
+    meta: { title: '关于项目' }
   }
 ]
 
