@@ -2,6 +2,7 @@
 OpenSource Copilot - 开源社区智能运营 Agent
 主入口文件
 """
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -15,6 +16,7 @@ async def lifespan(app: FastAPI):
     """应用生命周期管理"""
     # Startup
     print("🚀 OpenSource Copilot is starting...")
+    print(f"📍 Environment: {'production' if not settings.DEBUG else 'development'}")
     yield
     # Shutdown
     print("👋 OpenSource Copilot is shutting down...")
@@ -27,10 +29,12 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS配置
+# CORS配置 - 生产环境允许所有来源（Railway health check 需要）
+cors_origins = settings.CORS_ORIGINS if settings.DEBUG else ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -42,7 +46,7 @@ app.include_router(api_router, prefix="/api")
 
 @app.get("/")
 async def root():
-    """健康检查"""
+    """根路径 - 返回应用信息"""
     return {
         "name": "OpenSource Copilot",
         "version": "1.0.0",
@@ -53,8 +57,11 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    """健康检查端点"""
-    return {"status": "healthy"}
+    """
+    健康检查端点 - Railway/K8s 使用
+    返回简单状态，确保快速响应
+    """
+    return {"status": "healthy", "service": "opensource-copilot"}
 
 
 if __name__ == "__main__":

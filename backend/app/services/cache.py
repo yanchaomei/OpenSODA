@@ -120,12 +120,16 @@ class RedisCache:
         """获取 Redis 连接"""
         if self._redis is None:
             try:
-                import redis.asyncio as redis
-                self._redis = redis.from_url(self.redis_url, decode_responses=True)
+                import redis.asyncio as aioredis
+                self._redis = aioredis.from_url(self.redis_url, decode_responses=True)
                 await self._redis.ping()
                 self._available = True
+            except ImportError:
+                # Redis 模块未安装，跳过
+                self._available = False
+                self._redis = None
             except Exception as e:
-                print(f"Redis connection failed: {e}")
+                # Redis 连接失败，跳过
                 self._available = False
                 self._redis = None
         return self._redis
