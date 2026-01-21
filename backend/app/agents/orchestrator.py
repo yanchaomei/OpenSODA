@@ -431,10 +431,27 @@ async def run_agent_stream(
             
             elif kind == "on_chat_model_stream":
                 # 流式输出文本
-                chunk = event["data"]["chunk"]
-                if hasattr(chunk, "content") and chunk.content:
-                    final_text += chunk.content
-                    yield {"type": "text", "content": chunk.content}
+                chunk = event["data"].get("chunk")
+                if chunk:
+                    content = None
+                    # 尝试多种方式获取内容
+                    if hasattr(chunk, "content") and chunk.content:
+                        content = chunk.content
+                    elif isinstance(chunk, dict) and chunk.get("content"):
+                        content = chunk["content"]
+                    elif hasattr(chunk, "text") and chunk.text:
+                        content = chunk.text
+                    
+                    if content:
+                        final_text += content
+                        yield {"type": "text", "content": content}
+            
+            elif kind == "on_chat_model_end":
+                # 模型调用结束，获取最终输出
+                output = event["data"].get("output")
+                if output and hasattr(output, "content") and output.content and not final_text:
+                    final_text = output.content
+                    yield {"type": "text", "content": output.content}
             
             elif kind == "on_tool_start":
                 tool_name = event["name"]
@@ -471,8 +488,13 @@ async def run_agent_stream(
                 }
             
             elif kind == "on_chain_end":
-                # 最终结果
-                pass
+                # 检查最终输出
+                output = event["data"].get("output", {})
+                if isinstance(output, dict) and "messages" in output:
+                    last_msg = output["messages"][-1] if output["messages"] else None
+                    if last_msg and hasattr(last_msg, "content") and last_msg.content and not final_text:
+                        final_text = last_msg.content
+                        yield {"type": "text", "content": last_msg.content}
         
         # 如果有工具调用结果但没有生成文本，直接返回工具结果
         if tool_results and not final_text.strip():
@@ -480,13 +502,23 @@ async def run_agent_stream(
             for result in tool_results:
                 if "健康度分析报告" in result["output"] or "诊断报告" in result["output"]:
                     yield {"type": "text", "content": result["output"]}
+                    final_text = result["output"]
                     break
             else:
                 # 否则组合所有结果
                 combined = "\n\n".join([r["output"] for r in tool_results])
                 yield {"type": "text", "content": combined}
+                final_text = combined
+        
+        # 如果完全没有输出，返回默认消息
+        if not final_text.strip() and not tool_results:
+            yield {"type": "text", "content": "你好！我是 OpenSource Copilot，一个开源社区智能运营助手。请告诉我你想分析哪个开源项目，例如：\"分析 apache/dubbo 的健康状况\""}
     
     except Exception as e:
+        import traceback
+        error_detail = traceback.format_exc()
+        print(f"Agent stream error: {error_detail}")
         yield {"type": "error", "message": f"处理时发生错误: {str(e)}"}
+        yield {"type": "text", "content": f"抱歉，处理您的请求时发生了错误：{str(e)}\n\n请尝试重新提问，例如：\"分析 apache/dubbo\""}
     
     yield {"type": "status", "step": "complete", "message": "✨ 处理完成"}
