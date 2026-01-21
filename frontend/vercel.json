@@ -6,7 +6,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://your-backend.railway.app/api/:path*"
+      "destination": "https://opensoda-production.up.railway.app/api/:path*"
     },
     {
       "source": "/(.*)",
