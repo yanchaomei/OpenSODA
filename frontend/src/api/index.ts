@@ -1,12 +1,21 @@
 import axios from 'axios'
 
+// 获取 API 基础 URL（生产环境使用环境变量，开发环境使用代理）
+const getBaseUrl = () => {
+  // Vercel 生产环境会通过 rewrites 处理 /api 请求
+  return '/api'
+}
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: getBaseUrl(),
   timeout: 60000,
   headers: {
     'Content-Type': 'application/json'
   }
 })
+
+// 导出 API 基础 URL 供其他模块使用
+export const API_BASE_URL = getBaseUrl()
 
 // 请求拦截器
 api.interceptors.request.use(
